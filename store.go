@@ -12,17 +12,16 @@ import (
 )
 
 type Entry struct {
-	Slug        string    `json:"slug"`
-	URL         string    `json:"url"`
-	Title       string    `json:"title"`
-	Summary     string    `json:"summary"`
-	ContentHTML string    `json:"content_html"`
-	Author      string    `json:"author"`
-	Tag         string    `json:"tag"`
-	Published   time.Time `json:"published"`
-	Modified    time.Time `json:"modified"`
-	FetchedAt   time.Time `json:"fetched_at"`
-	DateApprox  bool      `json:"date_approx,omitempty"` // dates came from the page header (month precision), not JSON-LD
+	Slug       string    `json:"slug"`
+	URL        string    `json:"url"`
+	Title      string    `json:"title"`
+	Summary    string    `json:"summary"`
+	Author     string    `json:"author"`
+	Tag        string    `json:"tag"`
+	Published  time.Time `json:"published"`
+	Modified   time.Time `json:"modified"`
+	FetchedAt  time.Time `json:"fetched_at"`
+	DateApprox bool      `json:"date_approx,omitempty"` // dates came from the page header (month precision), not JSON-LD
 }
 
 type Store struct {

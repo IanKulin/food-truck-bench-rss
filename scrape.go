@@ -14,15 +14,13 @@ import (
 )
 
 const (
-	selCard     = "div.blog-cards > a.blog-card"
-	selTag      = ".blog-card-tag"
-	selTitle    = ".blog-card-title"
-	selExcerpt  = ".blog-card-excerpt"
-	selAuthor   = ".blog-card-author"
-	selBody     = "section.draft-body"
-	selSections = "article.blog-article > section.blog-section" // older template: body split across sections
-	selLDJSON   = `script[type="application/ld+json"]`
-	selHdrDate  = "header.blog-header .blog-date"
+	selCard    = "div.blog-cards > a.blog-card"
+	selTag     = ".blog-card-tag"
+	selTitle   = ".blog-card-title"
+	selExcerpt = ".blog-card-excerpt"
+	selAuthor  = ".blog-card-author"
+	selLDJSON  = `script[type="application/ld+json"]`
+	selHdrDate = "header.blog-header .blog-date"
 )
 
 type Card struct {
@@ -116,12 +114,11 @@ func text(s *goquery.Selection) string {
 }
 
 type Article struct {
-	ContentHTML         string
 	Published, Modified time.Time
 	Approx              bool // dates are the page-header date at month precision
 }
 
-func parseArticle(html []byte, articleURL string) (Article, error) {
+func parseArticle(html []byte) (Article, error) {
 	var a Article
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(html)))
 	if err != nil {
@@ -136,12 +133,7 @@ func parseArticle(html []byte, articleURL string) (Article, error) {
 		}
 		a.Published, a.Modified, a.Approx = d, d, true
 	}
-	inner, err := articleBodyHTML(doc)
-	if err != nil {
-		return a, err
-	}
-	a.ContentHTML, err = cleanBody(inner, articleURL)
-	return a, err
+	return a, nil
 }
 
 func extractDates(doc *goquery.Document) (pub, mod time.Time, err error) {
@@ -208,26 +200,4 @@ func parseHeaderDate(s string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("unparseable header date %q", s)
-}
-
-func articleBodyHTML(doc *goquery.Document) (string, error) {
-	if body := doc.Find(selBody).First(); body.Length() > 0 {
-		return body.Html()
-	}
-	var sb strings.Builder
-	var err error
-	doc.Find(selSections).Each(func(_ int, s *goquery.Selection) {
-		h, e := goquery.OuterHtml(s)
-		if e != nil {
-			err = e
-		}
-		sb.WriteString(h)
-	})
-	if err != nil {
-		return "", err
-	}
-	if sb.Len() == 0 {
-		return "", fmt.Errorf("article body not found (%q or %q)", selBody, selSections)
-	}
-	return sb.String(), nil
 }

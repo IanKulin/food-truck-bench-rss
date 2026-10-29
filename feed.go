@@ -29,7 +29,6 @@ type atomEntry struct {
 	Author    atomAuthor `xml:"author"`
 	Category  *atomCat   `xml:"category,omitempty"`
 	Summary   atomText   `xml:"summary"`
-	Content   atomText   `xml:"content"`
 }
 
 type atomAuthor struct {
@@ -69,7 +68,6 @@ func renderFeed(cfg Config, entries []Entry) ([]byte, error) {
 			Updated:   e.Modified.UTC().Format(time.RFC3339),
 			Author:    atomAuthor{Name: e.Author},
 			Summary:   atomText{Type: "text", Body: e.Summary},
-			Content:   atomText{Type: "html", Body: e.ContentHTML},
 		}
 		if e.Tag != "" {
 			ae.Category = &atomCat{Term: e.Tag}

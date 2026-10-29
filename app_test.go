@@ -71,30 +71,23 @@ func TestParseListingSkipsBadCards(t *testing.T) {
 
 func TestParseArticleFixtures(t *testing.T) {
 	for _, f := range []string{"article-grok-4-7.html", "article-minimax-m3-1-flash.html"} {
-		u := "https://foodtruckbench.com/blog/x"
-		a, err := parseArticle(readFixture(t, f), u)
+		a, err := parseArticle(readFixture(t, f))
 		if err != nil {
 			t.Fatalf("%s: %v", f, err)
 		}
 		if a.Published.IsZero() || a.Modified.IsZero() {
 			t.Errorf("%s: dates missing", f)
 		}
-		if strings.Contains(a.ContentHTML, "draft-chart-canvas") || strings.Contains(a.ContentHTML, "<script") {
-			t.Errorf("%s: unsanitised content", f)
-		}
-		if !strings.Contains(a.ContentHTML, "Originally published at") {
-			t.Errorf("%s: missing footer", f)
-		}
 	}
 }
 
 // The live claude-opus-5 page has no BlogPosting JSON-LD, only a month-level header date.
 func TestParseArticleHeaderDateFallback(t *testing.T) {
-	a, err := parseArticle(readFixture(t, "article-claude-opus-5.html"), "https://foodtruckbench.com/blog/claude-opus-5")
+	a, err := parseArticle(readFixture(t, "article-claude-opus-5.html"))
 	if err != nil || !a.Approx || a.Published.Day() != 1 || a.Published.Month() != time.July || !a.Published.Equal(a.Modified) {
 		t.Errorf("%+v %v", a, err)
 	}
-	if a, _ := parseArticle(readFixture(t, "article-grok-4-7.html"), "https://foodtruckbench.com/blog/grok-4-7"); a.Approx {
+	if a, _ := parseArticle(readFixture(t, "article-grok-4-7.html")); a.Approx {
 		t.Error("JSON-LD article must not be approximate")
 	}
 	if d, err := parseHeaderDate("23 October 2026"); err != nil || d.Day() != 23 {
@@ -106,12 +99,9 @@ func TestParseArticleOlderTemplate(t *testing.T) {
 	h := `<article class="blog-article"><header class="blog-header"><span class="blog-date">February 2026</span></header>
 	<section class="blog-section"><h2>One</h2><p>first</p></section><section class="blog-section"><p>second</p></section>
 	<footer><p>related junk</p></footer></article>`
-	a, err := parseArticle([]byte(h), "https://foodtruckbench.com/blog/x")
+	a, err := parseArticle([]byte(h))
 	if err != nil || !a.Approx || a.Published.Month() != time.February {
 		t.Fatalf("%+v %v", a, err)
-	}
-	if !strings.Contains(a.ContentHTML, "first") || !strings.Contains(a.ContentHTML, "second") || strings.Contains(a.ContentHTML, "junk") {
-		t.Errorf("body wrong: %s", a.ContentHTML)
 	}
 }
 
@@ -123,41 +113,16 @@ func TestParseArticleFailures(t *testing.T) {
 		"malformed":   ld(`{not json`) + body,
 		"bad date":    ld(`{"@type":"BlogPosting","datePublished":"yesterday","dateModified":"x"}`) + body,
 		"missing mod": ld(`{"@type":"BlogPosting","datePublished":"2026-01-01T00:00:00Z"}`) + body,
-		"no body":     ld(`{"@type":"BlogPosting","datePublished":"2026-01-01T00:00:00Z","dateModified":"2026-01-01T00:00:00Z"}`),
 		"wrong type":  ld(`{"@type":"Article","datePublished":"2026-01-01T00:00:00Z","dateModified":"2026-01-01T00:00:00Z"}`) + body,
 	}
 	for name, h := range cases {
-		if _, err := parseArticle([]byte(h), "https://foodtruckbench.com/blog/x"); err == nil {
+		if _, err := parseArticle([]byte(h)); err == nil {
 			t.Errorf("%s: expected failure", name)
 		}
 	}
 	graph := ld(`{"@graph":[{"@type":"WebSite"},{"@type":["BlogPosting"],"datePublished":"2026-01-01T00:00:00Z","dateModified":"2026-01-02T00:00:00Z"}]}`) + body
-	if a, err := parseArticle([]byte(graph), "https://foodtruckbench.com/blog/x"); err != nil || a.Modified.Day() != 2 {
+	if a, err := parseArticle([]byte(graph)); err != nil || a.Modified.Day() != 2 {
 		t.Errorf("@graph: %+v %v", a, err)
-	}
-}
-
-func TestCleanBody(t *testing.T) {
-	in := `<figure class="draft-chart"><figcaption>Revenue &amp; costs</figcaption><div class="draft-chart-canvas"></div></figure>
-	<p onclick="x()">hi <a href="/blog/other">l</a><script>alert(1)</script><img src="/img/a.png" onerror="x()" srcset="/a.png 1x, /b.png 2x"></p>`
-	out, err := cleanBody(in, "https://foodtruckbench.com/blog/post")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{
-		`<em>Revenue &amp; costs</em>`,
-		`href="https://foodtruckbench.com/blog/post"`,
-		`href="https://foodtruckbench.com/blog/other"`,
-		`src="https://foodtruckbench.com/img/a.png"`,
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("missing %q in %s", want, out)
-		}
-	}
-	for _, bad := range []string{"<script", "onerror", "onclick", "draft-chart"} {
-		if strings.Contains(out, bad) {
-			t.Errorf("found %q in %s", bad, out)
-		}
 	}
 }
 
@@ -352,14 +317,14 @@ func TestPollerArticleFailure(t *testing.T) {
 		t.Errorf("failed article not retried, got %d", n)
 	}
 
-	// refetch failure keeps old content
+	// refetch failure keeps the old entry
 	f.failArticles["a"] = true
 	f.titleSuffix = " v2"
 	now = now.Add(30 * time.Hour)
 	p.Poll(ctx)
 	for _, e := range p.store.Snapshot() {
-		if e.Slug == "a" && !strings.Contains(e.ContentHTML, "body of a") {
-			t.Errorf("content discarded: %+v", e)
+		if e.Slug == "a" && e.Published.IsZero() {
+			t.Errorf("entry discarded: %+v", e)
 		}
 	}
 }
@@ -380,8 +345,8 @@ func TestFeedAndServer(t *testing.T) {
 	}
 
 	st.Replace([]Entry{
-		{Slug: "old", URL: "https://foodtruckbench.com/blog/old", Title: "Old & <b>", Published: t0, Modified: t0, ContentHTML: "<p>x</p>", Tag: "T"},
-		{Slug: "new", URL: "https://foodtruckbench.com/blog/new", Title: "New", Published: t0.Add(time.Hour), Modified: t0.Add(2 * time.Hour), ContentHTML: "<p>y</p>"},
+		{Slug: "old", URL: "https://foodtruckbench.com/blog/old", Title: "Old & <b>", Published: t0, Modified: t0, Tag: "T"},
+		{Slug: "new", URL: "https://foodtruckbench.com/blog/new", Title: "New", Published: t0.Add(time.Hour), Modified: t0.Add(2 * time.Hour)},
 	})
 	get := func() (*httptest.ResponseRecorder, []byte) {
 		rec := httptest.NewRecorder()
@@ -396,9 +361,8 @@ func TestFeedAndServer(t *testing.T) {
 		ID      string `xml:"id"`
 		Updated string `xml:"updated"`
 		Entries []struct {
-			ID      string `xml:"id"`
-			Title   string `xml:"title"`
-			Content string `xml:"content"`
+			ID    string `xml:"id"`
+			Title string `xml:"title"`
 		} `xml:"entry"`
 	}
 	if err := xml.Unmarshal(b1, &parsed); err != nil {
@@ -407,7 +371,7 @@ func TestFeedAndServer(t *testing.T) {
 	if parsed.ID != "https://feed.test/atom.xml" || len(parsed.Entries) != 2 || parsed.Entries[0].ID != "https://foodtruckbench.com/blog/new" {
 		t.Errorf("bad feed: %+v", parsed)
 	}
-	if parsed.Entries[1].Title != "Old & <b>" || parsed.Entries[0].Content != "<p>y</p>" {
+	if parsed.Entries[1].Title != "Old & <b>" {
 		t.Errorf("escaping round-trip: %+v", parsed.Entries)
 	}
 	if parsed.Updated != "2026-01-01T02:00:00Z" {

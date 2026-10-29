@@ -1,6 +1,6 @@
 # FoodTruck Bench RSS
 
-Unofficial Atom feed for https://foodtruckbench.com/blog, which has no feed of its own. A small Go service scrapes the blog, keeps full-text entries in a JSON file, and serves them at `/atom.xml`.
+Unofficial Atom feed for https://foodtruckbench.com/blog, which has no feed of its own. A small Go service scrapes the blog, keeps entry metadata (title, summary, author, tag, dates) in a JSON file, and serves them at `/atom.xml`. Each item links to the original post; the full text is not republished.
 
 Public URL: https://food-truck-bench-feed.iankulin.com/atom.xml
 
@@ -37,7 +37,6 @@ Each client address gets a token bucket (`RATE_LIMIT` requests/minute, default 6
 - **Force a refresh:** delete the data file (or `docker compose down -v`) and restart. There is no refresh endpoint.
 - **Behaviour:** each poll fetches the listing, fetches new articles, and refetches an article only when its listing card has changed (silent edits that leave the card alone are not picked up). A failed listing fetch (error, or zero valid cards) never touches the store. Entries that disappear from the listing are kept.
 - **Dates** come from each article's `BlogPosting` JSON-LD. Many articles have none, so the page-header date is used instead (month precision, treated as the 1st of the month UTC, flagged `date_approx` in the store). A later refetch that finds JSON-LD upgrades the date; otherwise `Published` is frozen once set. An article with neither is skipped and retried every poll.
-- Full text is republished for personal use, with a link back on every item. Check the site's terms before making it widely public.
 
 ## Development
 

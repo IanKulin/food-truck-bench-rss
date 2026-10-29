@@ -89,7 +89,6 @@ func (p *Poller) Poll(ctx context.Context) {
 					continue // nothing to store until the article succeeds
 				}
 			} else {
-				e.ContentHTML = a.ContentHTML
 				e.Modified = a.Modified
 				// Published is frozen once set, except an approximate date may be
 				// upgraded by a precise one.
@@ -133,5 +132,5 @@ func (p *Poller) fetchArticle(ctx context.Context, u string) (Article, error) {
 	if err != nil {
 		return Article{}, err
 	}
-	return parseArticle(b, u)
+	return parseArticle(b)
 }

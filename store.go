@@ -30,6 +30,7 @@ type Store struct {
 
 	mu       sync.RWMutex
 	entries  []Entry
+	gen      uint64 // bumped on every successful Replace
 	lastPoll time.Time
 }
 
@@ -69,6 +70,13 @@ func (s *Store) Snapshot() []Entry {
 	return append([]Entry(nil), s.entries...)
 }
 
+// Generation changes whenever the stored entries do.
+func (s *Store) Generation() uint64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.gen
+}
+
 func (s *Store) LastPoll() time.Time {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -90,6 +98,7 @@ func (s *Store) Replace(es []Entry) error {
 	}
 	s.mu.Lock()
 	s.entries = es
+	s.gen++
 	s.mu.Unlock()
 	return nil
 }

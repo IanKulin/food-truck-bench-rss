@@ -38,7 +38,19 @@ type Scraper struct {
 func NewScraper(cfg Config) *Scraper {
 	o, _ := url.Parse(cfg.Origin)
 	return &Scraper{
-		client:    &http.Client{Timeout: fetchTimeout},
+		client: &http.Client{
+			Timeout: fetchTimeout,
+			// Never follow a redirect off the source host (SSRF / internal-network pivot).
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 5 {
+					return fmt.Errorf("stopped after 5 redirects")
+				}
+				if req.URL.Host != o.Host {
+					return fmt.Errorf("redirect to foreign host %q refused", req.URL.Host)
+				}
+				return nil
+			},
+		},
 		userAgent: "foodtruckbench-rss/1.0 (+" + cfg.PublicURL + ")",
 		origin:    o,
 	}

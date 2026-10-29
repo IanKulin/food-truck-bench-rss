@@ -1,10 +1,20 @@
 {
   "cSpell.words": [
+    "absolutised",
+    "bluemonday",
     "certresolver",
     "distroless",
     "foodtruckbench",
+    "healthcheck",
+    "healthz",
+    "hrefs",
+    "httptest",
     "letsencrypt",
+    "licence",
+    "refetches",
+    "sanitise",
     "testdata",
+    "unsanitised",
     "websecure"
   ]
 }

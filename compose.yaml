@@ -1,0 +1,22 @@
+services:
+  foodtruckbench-rss:
+    build: .
+    restart: unless-stopped
+    environment:
+      PUBLIC_URL: https://food-truck-bench-feed.iankulin.com
+      POLL_INTERVAL: 3h
+    volumes:
+      - rss-data:/data
+    networks: [traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.ftb-rss.rule=Host(`food-truck-bench-feed.iankulin.com`)
+      - traefik.http.routers.ftb-rss.entrypoints=websecure
+      - traefik.http.routers.ftb-rss.tls.certresolver=letsencrypt
+      - traefik.http.services.ftb-rss.loadbalancer.server.port=8080
+volumes:
+  rss-data:
+networks:
+  traefik:
+    external: true

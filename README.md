@@ -2,7 +2,7 @@
 
 Unofficial Atom feed for https://foodtruckbench.com/blog, which has no feed of its own. A small Go service scrapes the blog, keeps entry metadata (title, summary, author, tag, dates) in a JSON file, and serves them at `/atom.xml`. Each item links to the original post; the full text is not republished.
 
-Public URL: https://food-truck-bench-feed.iankulin.com/atom.xml
+Public URL: https://foodtruckbf.iankulin.com/atom.xml
 
 ## Configuration
 

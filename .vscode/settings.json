@@ -5,6 +5,7 @@
     "certresolver",
     "distroless",
     "foodtruckbench",
+    "foodtruckbf",
     "healthcheck",
     "healthz",
     "hrefs",

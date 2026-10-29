@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"sync"
 	"time"
@@ -33,9 +34,34 @@ func (c *feedCache) get(cfg Config, store *Store) ([]byte, bool, error) {
 	return b, true, nil
 }
 
+var indexTmpl = template.Must(template.New("index").Parse(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Food Truck Bench RSS</title>
+<link rel="alternate" type="application/atom+xml" title="Food Truck Bench" href="{{.Feed}}">
+</head>
+<body>
+<h1>Food Truck Bench RSS</h1>
+<ul>
+<li>Unofficial RSS feed for <a href="https://foodtruckbench.com/blog">foodtruckbench.com/blog</a>: <a href="{{.Feed}}">{{.Feed}}</a></li>
+<li>Code: <a href="https://github.com/IanKulin/food-truck-bench-rss">github.com/IanKulin/food-truck-bench-rss</a></li>
+</ul>
+</body>
+</html>
+`))
+
 func newServer(cfg Config, store *Store) *http.Server {
 	mux := http.NewServeMux()
 	cache := &feedCache{}
+
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		indexTmpl.Execute(w, struct{ Feed string }{cfg.PublicURL + "/atom.xml"})
+	})
 
 	mux.HandleFunc("GET /atom.xml", func(w http.ResponseWriter, r *http.Request) {
 		b, ready, err := cache.get(cfg, store)

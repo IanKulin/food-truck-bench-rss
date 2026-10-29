@@ -47,4 +47,4 @@ Each client address gets a token bucket (`RATE_LIMIT` requests/minute, default 6
 - AI tools have been used in the production of this software
 - MIT licence
 - No affiliation with foodtruckbench.com, check their terms before using
-- there's probably a public instance at food-truck-bench-feed.iankulin.com/atom.xml
+- there's probably a public instance at foodtruckbf.iankulin.com/atom.xml

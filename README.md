@@ -22,6 +22,10 @@ Public URL: https://food-truck-bench-feed.iankulin.com/atom.xml
 
 Locally: `PUBLIC_URL=http://localhost:8080 go run .`
 
+## Rate limiting
+
+Each client address gets a token bucket (`RATE_LIMIT` requests/minute, default 60, burst 10; 0 disables) and receives `429` with `Retry-After` when empty. The client address is the direct peer unless that peer is within `TRUSTED_PROXIES` (default: loopback and private ranges), in which case `X-Forwarded-For` is read right to left and the first untrusted address is used, so spoofed entries added by clients are ignored. Narrow `TRUSTED_PROXIES` to your proxy's network if other containers share it. If Traefik sits behind another proxy/CDN, add that proxy's range too. IPv6 clients are bucketed per /64.
+
 ## Endpoints
 
 - `/atom.xml`: the feed (503 until the first poll has stored something)
@@ -38,3 +42,9 @@ Locally: `PUBLIC_URL=http://localhost:8080 go run .`
 ## Development
 
     go vet ./... && go test -race ./...
+
+## Legal
+- AI tools have been used in the production of this software
+- MIT licence
+- No affiliation with foodtruckbench.com, check their terms before using
+- there's probably a public instance at food-truck-bench-feed.iankulin.com/atom.xml

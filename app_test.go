@@ -423,3 +423,56 @@ func TestFeedAndServer(t *testing.T) {
 		t.Errorf("healthz=%d", rec.Code)
 	}
 }
+
+func TestClientAddr(t *testing.T) {
+	trusted, _ := parsePrefixes(defaultTrustedProxies)
+	cases := []struct{ remote, xff, want string }{
+		{"203.0.113.9:1234", "1.2.3.4", "203.0.113.9"},               // untrusted peer: XFF ignored
+		{"172.18.0.2:5555", "198.51.100.7", "198.51.100.7"},          // via proxy
+		{"172.18.0.2:5555", "6.6.6.6, 198.51.100.7", "198.51.100.7"}, // spoofed left entry ignored
+		{"172.18.0.2:5555", "198.51.100.7, 10.0.0.5", "198.51.100.7"},
+		{"172.18.0.2:5555", "", "172.18.0.2"},
+		{"172.18.0.2:5555", "garbage", "172.18.0.2"},
+	}
+	for _, c := range cases {
+		r := httptest.NewRequest("GET", "/atom.xml", nil)
+		r.RemoteAddr = c.remote
+		if c.xff != "" {
+			r.Header.Set("X-Forwarded-For", c.xff)
+		}
+		if got := clientAddr(r, trusted).String(); got != c.want {
+			t.Errorf("remote=%s xff=%q: got %s, want %s", c.remote, c.xff, got, c.want)
+		}
+	}
+}
+
+func TestRateLimit(t *testing.T) {
+	trusted, _ := parsePrefixes(defaultTrustedProxies)
+	l := newLimiter(60)
+	now := time.Now()
+	l.now = func() time.Time { return now }
+	h := rateLimit(l, trusted, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	do := func(xff string) int {
+		r := httptest.NewRequest("GET", "/atom.xml", nil)
+		r.RemoteAddr = "172.18.0.2:1"
+		r.Header.Set("X-Forwarded-For", xff)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Code
+	}
+	for i := 0; i < rateBurst; i++ {
+		if c := do("198.51.100.7"); c != 200 {
+			t.Fatalf("request %d: %d", i, c)
+		}
+	}
+	if c := do("198.51.100.7"); c != 429 {
+		t.Fatalf("over burst: got %d, want 429", c)
+	}
+	if c := do("198.51.100.8"); c != 200 {
+		t.Fatalf("other client should be unaffected, got %d", c)
+	}
+	now = now.Add(2 * time.Second)
+	if c := do("198.51.100.7"); c != 200 {
+		t.Fatalf("after refill: got %d", c)
+	}
+}

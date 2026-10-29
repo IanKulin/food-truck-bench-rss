@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net/netip"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -24,6 +26,9 @@ type Config struct {
 	PollInterval time.Duration
 	DataFile     string
 	ListenAddr   string
+
+	RateLimit      int // requests per minute per client address; 0 disables
+	TrustedProxies []netip.Prefix
 }
 
 func loadConfig(getenv func(string) string) (Config, error) {
@@ -61,6 +66,15 @@ func loadConfig(getenv func(string) string) (Config, error) {
 
 	c.DataFile = env("DATA_FILE", "data/foodtruckbench.json")
 	c.ListenAddr = env("LISTEN_ADDR", ":8080")
+
+	c.RateLimit, err = strconv.Atoi(env("RATE_LIMIT", "60"))
+	if err != nil || c.RateLimit < 0 {
+		return c, fmt.Errorf("RATE_LIMIT must be a non-negative integer (requests/minute, 0 disables)")
+	}
+	c.TrustedProxies, err = parsePrefixes(env("TRUSTED_PROXIES", defaultTrustedProxies))
+	if err != nil {
+		return c, fmt.Errorf("TRUSTED_PROXIES: %w", err)
+	}
 	return c, nil
 }
 

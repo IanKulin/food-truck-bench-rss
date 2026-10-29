@@ -5,6 +5,7 @@ services:
     environment:
       PUBLIC_URL: https://food-truck-bench-feed.iankulin.com
       POLL_INTERVAL: 3h
+      RATE_LIMIT: 60 # requests/minute per client IP (taken from X-Forwarded-For when the peer is a trusted proxy)
     volumes:
       - rss-data:/data
     networks: [traefik]
